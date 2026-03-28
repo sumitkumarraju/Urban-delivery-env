@@ -1,0 +1,40 @@
+"""
+FastAPI application for the Urban Delivery Environment.
+
+Usage:
+    uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
+
+    Or run directly:
+    python -m server.app
+"""
+
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from openenv.core.env_server.http_server import create_app
+    from openenv.core.env_server.mcp_types import CallToolAction, CallToolObservation
+except ImportError:
+    from openenv.core.env_server.http_server import create_app
+    from openenv.core.env_server.mcp_types import CallToolAction, CallToolObservation
+
+from server.urban_delivery_environment import UrbanDeliveryEnvironment
+
+app = create_app(
+    UrbanDeliveryEnvironment,
+    CallToolAction,
+    CallToolObservation,
+    env_name="urban_delivery_env",
+)
+
+
+def main():
+    """Entry point for direct execution."""
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+if __name__ == "__main__":
+    main()

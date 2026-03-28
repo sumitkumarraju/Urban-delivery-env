@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-urban-delivery-env"
+version = "0.1.0"
+description = "Urban Delivery Optimization Environment for OpenEnv — RL environment simulating package delivery with traffic, fuel, deadlines, and weather"
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core[core]>=0.2.1",
+    "fastapi>=0.115.0",
+    "pydantic>=2.0.0",
+    "uvicorn>=0.24.0",
+    "requests>=2.31.0",
+    "numpy>=1.24.0",
+    "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+server = "urban_delivery_env.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+    "urban_delivery_env",
+    "urban_delivery_env.models",
+    "urban_delivery_env.tasks",
+    "urban_delivery_env.graders",
+    "urban_delivery_env.server",
+]
+[tool.setuptools.package-dir]
+"urban_delivery_env" = "."
+"urban_delivery_env.models" = "models"
+"urban_delivery_env.tasks" = "tasks"
+"urban_delivery_env.graders" = "graders"
+"urban_delivery_env.server" = "server"

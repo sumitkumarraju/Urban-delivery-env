@@ -1,0 +1,73 @@
+"""Hard Grader — Full weighted scoring with all factors.
+
+Score = 0.4 * completion + 0.2 * fuel_efficiency + 0.2 * deadline_compliance
+        + 0.1 * priority_accuracy + 0.1 * reward_normalized
+
+This grader evaluates mastery across all environment dimensions.
+"""
+
+from graders.base_grader import BaseGrader
+from tasks.hard import HARD_TASK
+
+
+class HardGrader(BaseGrader):
+    """Grades the hard task with comprehensive weighted scoring."""
+
+    def __init__(self):
+        super().__init__(HARD_TASK)
+
+    def score(self, episode_stats: dict) -> float:
+        delivered = episode_stats["packages_delivered"]
+        total = episode_stats["packages_total"]
+        obs = episode_stats["final_observation"]
+
+        # Completion ratio (40%)
+        completion = delivered / total if total > 0 else 0.0
+
+        # Fuel efficiency (20%)
+        fuel_used = episode_stats["fuel_used"]
+        initial_fuel = episode_stats["initial_fuel"]
+        fuel_efficiency = max(0.0, 1.0 - (fuel_used / initial_fuel)) if initial_fuel > 0 else 0.0
+
+        # Deadline compliance (20%) — ratio of delivered packages that met deadline
+        deadline_met = 0
+        deadline_total = 0
+        for pkg in obs.packages:
+            if pkg.delivered and pkg.deadline is not None:
+                deadline_total += 1
+                if episode_stats["steps"] <= pkg.deadline:
+                    deadline_met += 1
+        deadline_compliance = (deadline_met / deadline_total) if deadline_total > 0 else 1.0
+
+        # Priority accuracy (10%) — did we deliver urgent/fragile packages?
+        priority_delivered = 0
+        priority_total = 0
+        for pkg in obs.packages:
+            if pkg.priority > 0:
+                priority_total += 1
+                if pkg.delivered:
+                    priority_delivered += 1
+        priority_accuracy = (priority_delivered / priority_total) if priority_total > 0 else 1.0
+
+        # Reward normalized (10%) — positive reward ratio
+        total_reward = episode_stats["total_reward"]
+        max_possible = total * 20 + total * 15 + total * 10 + 50
+        reward_normalized = max(0.0, min(1.0, total_reward / max_possible)) if max_possible > 0 else 0.0
+
+        score = (
+            0.4 * completion
+            + 0.2 * fuel_efficiency
+            + 0.2 * deadline_compliance
+            + 0.1 * priority_accuracy
+            + 0.1 * reward_normalized
+        )
+        return score
+
+
+if __name__ == "__main__":
+    grader = HardGrader()
+    import random
+    random.seed(456)
+    actions = [random.randint(0, 5) for _ in range(300)]
+    score = grader.grade(actions)
+    print(f"Hard Task Score: {score:.4f}")
