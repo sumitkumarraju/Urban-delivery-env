@@ -268,6 +268,63 @@ score = 0.4 × completion
 
 ---
 
+## 📁 Project Structure
+
+```
+urban_delivery_env/
+├── openenv.yaml                ← OpenEnv manifest (spec_version: 1)
+├── pyproject.toml              ← Package config + dependencies
+├── Makefile                    ← Dev commands: test, bench, start, debug
+├── README.md                   ← This file
+├── .gitignore
+├── .dockerignore
+│
+├── __init__.py                 ← Package exports (defensive imports)
+├── env.py                      ← Core simulation engine (530+ lines)
+│                                  └─ Grid, Vehicle, Packages, Traffic, Weather
+│                                  └─ Reward shaping, NL hints, capacity
+├── client.py                   ← MCPToolClient subclass for remote usage
+├── inference.py                ← Baseline LLM inference script (OpenAI API)
+│
+├── models/                     ← Pydantic typed models
+│   ├── __init__.py
+│   ├── action.py               ← 6 actions (move×4, deliver, refuel)
+│   ├── observation.py          ← Vehicle, Package, Weather, delivery_step
+│   └── reward.py               ← Reward breakdown per step
+│
+├── tasks/                      ← Task difficulty configurations
+│   ├── __init__.py             ← ALL_TASKS registry
+│   ├── easy.py                 ← 5×5, 2 pkgs, 100 fuel, no traffic
+│   ├── medium.py               ← 8×8, 3 pkgs, 60 fuel, static traffic
+│   └── hard.py                 ← 10×10, 5 pkgs, 40 fuel, dynamic everything
+│
+├── graders/                    ← Deterministic scoring (0.0–1.0)
+│   ├── __init__.py
+│   ├── base_grader.py          ← Abstract base + grade_with_explanation()
+│   ├── easy_grader.py          ← score = completion ratio
+│   ├── medium_grader.py        ← score = 0.5×completion + 0.3×fuel + 0.2×time
+│   └── hard_grader.py          ← score = 5-factor weighted (completion, fuel,
+│                                        deadline, priority, reward)
+│
+├── server/                     ← OpenEnv server + Docker
+│   ├── urban_delivery_environment.py  ← MCPEnvironment wrapper (6 MCP tools)
+│   ├── app.py                  ← FastAPI entry point
+│   ├── Dockerfile              ← Multi-stage production build
+│   └── requirements.txt        ← Docker dependencies
+│
+├── scripts/                    ← Dev utilities
+│   ├── benchmark.py            ← Raw SPS performance profiler
+│   └── interactive_debugger.py ← Visual CLI state stepping tool
+│
+└── tests/                      ← pytest test suite (13 tests)
+    ├── __init__.py
+    ├── conftest.py             ← Shared fixtures (easy_config, hard_config)
+    ├── test_env.py             ← Env logic: walls, fuel, capacity, hints
+    └── test_graders.py         ← Grader: bounds, explanations, determinism
+```
+
+---
+
 ## ⚡ Performance & Quality Metrics
 
 | Metric | Result |
