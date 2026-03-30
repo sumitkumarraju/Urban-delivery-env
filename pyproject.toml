@@ -41,3 +41,7 @@ packages = [
 "urban_delivery_env.tasks" = "tasks"
 "urban_delivery_env.graders" = "graders"
 "urban_delivery_env.server" = "server"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
