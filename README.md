@@ -1,3 +1,13 @@
+---
+title: Urban Delivery Optimization Environment
+emoji: 🚚
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 8000
+license: bsd-3-clause
+---
+
 # 🚚 Urban Delivery Optimization Environment
 
 > A production-grade reinforcement learning environment for training AI agents to optimize urban package delivery logistics, built on the [OpenEnv](https://github.com/meta-pytorch/OpenEnv) framework.
