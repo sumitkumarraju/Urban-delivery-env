@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from openenv.core.env_server.mcp_environment import MCPEnvironment
 from openenv.core.env_server.types import Action, Observation, State
+from server.observation import DeliveryObservationResponse
 from fastmcp import FastMCP
 
 import sys
@@ -160,25 +161,32 @@ class UrbanDeliveryEnvironment(MCPEnvironment):
         seed: Optional[int] = None,
         episode_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> Observation:
+    ) -> DeliveryObservationResponse:
         """Reset the environment to initial state."""
         self._env = DeliveryEnvironment(self._config)
         obs = self._env.reset(seed=seed)
+        summary = self._env.get_state_summary()
 
         self._state = State(
             episode_id=episode_id or str(uuid4()),
             step_count=0,
         )
 
-        return Observation(
+        return DeliveryObservationResponse(
             done=False,
             reward=0.0,
-            metadata={
-                "status": "ready",
-                "task": self._current_task,
-                "observation": obs.model_dump(),
-                "message": f"Urban Delivery Environment ready! Task: {self._current_task}",
-            },
+            status="ready",
+            task=self._current_task,
+            message=f"Urban Delivery Environment ready! Task: {self._current_task}",
+            vehicle_position=list(obs.vehicle.position),
+            fuel_remaining=obs.vehicle.fuel,
+            packages_delivered=obs.packages_delivered,
+            packages_total=obs.packages_total,
+            step_count=0,
+            carrying_count=summary.get("carrying_count", 0),
+            hint=summary.get("hint", ""),
+            grid_size=self._config.grid_size,
+            observation_detail=obs.model_dump(),
         )
 
     def _step_impl(
@@ -186,15 +194,15 @@ class UrbanDeliveryEnvironment(MCPEnvironment):
         action: Action,
         timeout_s: Optional[float] = None,
         **kwargs: Any,
-    ) -> Observation:
+    ) -> DeliveryObservationResponse:
         """Handle non-MCP actions (fallback)."""
-        return Observation(
+        return DeliveryObservationResponse(
             done=False,
             reward=0.0,
-            metadata={
-                "error": f"Unknown action type: {type(action).__name__}. "
-                "Use MCP tools: move, deliver, refuel, get_observation, set_task."
-            },
+            status="error",
+            task=self._current_task,
+            message=f"Unknown action type: {type(action).__name__}. "
+                    "Use MCP tools: move, deliver, refuel, get_observation, set_task.",
         )
 
     def step(
