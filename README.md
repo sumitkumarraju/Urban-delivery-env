@@ -396,15 +396,18 @@ export OPENAI_API_KEY=sk-...
 python inference.py
 ```
 
-### Baseline Scores (gpt-4o-mini)
+### Baseline Scores
 
-| Task | Score | Steps |
-|------|-------|-------|
-| Easy | ~0.50 | ≤100 |
-| Medium | ~0.35 | ≤200 |
-| Hard | ~0.20 | ≤300 |
+| Task | Random Agent | GPT-4o (via Bytez) | Improvement |
+|------|-------------|-------------------|-------------|
+| Easy | 0.0000 | **1.0000** ✅ | ♾️ |
+| Medium | 0.1390 | **0.5583** | 4× |
+| Hard | 0.2000 | **0.3900** | 2× |
+| **Average** | 0.1130 | **0.6494** | **5.7×** |
 
-> Scores vary by model. Better models (GPT-4, Claude) typically score higher the richer observation and hint system helps LLMs reason better.
+> GPT-4o scored a **perfect 1.0 on Easy** (13 steps, 34s), demonstrating the environment's
+> LLM-native design. The NL hints and structured observations enable strong reasoning.
+> Total inference time: 214s — well within the 20-minute limit.
 
 ---
 
