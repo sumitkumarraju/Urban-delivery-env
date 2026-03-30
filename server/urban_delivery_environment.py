@@ -136,6 +136,22 @@ class UrbanDeliveryEnvironment(MCPEnvironment):
                 "observation": obs.model_dump(),
             }
 
+        @mcp.tool
+        def get_hint() -> dict:
+            """Get a natural language hint about what to do next.
+
+            Returns:
+                Dictionary with hint text and key distances
+            """
+            summary = self._env.get_state_summary()
+            return {
+                "hint": summary["hint"],
+                "nearest_package_distance": summary["nearest_package_distance"],
+                "nearest_fuel_station_distance": summary["nearest_fuel_station_distance"],
+                "carrying": summary["carrying_count"],
+                "max_carrying": summary["max_carrying"],
+            }
+
         super().__init__(mcp)
         self._state = State(episode_id=str(uuid4()), step_count=0)
 

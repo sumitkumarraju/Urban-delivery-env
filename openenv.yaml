@@ -4,3 +4,30 @@ type: space
 runtime: fastapi
 app: server.app:app
 port: 8000
+
+description: >
+  Urban Delivery Optimization Environment — A grid-based RL simulation where
+  AI agents optimize package delivery logistics across a city. Features traffic
+  navigation, fuel management, weather adaptation, delivery deadlines, and
+  package priority handling. Graded on completion, efficiency, and time management.
+
+tasks:
+  - name: easy
+    description: "5x5 grid, 2 packages, unlimited fuel, no traffic. Learn the basics."
+    grader: graders.easy_grader.EasyGrader
+
+  - name: medium
+    description: "8x8 grid, 3 packages, limited fuel, static traffic, some deadlines."
+    grader: graders.medium_grader.MediumGrader
+
+  - name: hard
+    description: "10x10 grid, 5 packages, tight fuel, dynamic traffic, all deadlines, priorities, weather."
+    grader: graders.hard_grader.HardGrader
+
+tools:
+  - move: "Move vehicle (up/down/left/right)"
+  - deliver: "Deliver package at current position"
+  - refuel: "Refuel at fuel station"
+  - get_observation: "Get current state"
+  - get_hint: "Get natural language advice"
+  - set_task: "Switch difficulty (easy/medium/hard)"

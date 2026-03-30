@@ -22,12 +22,12 @@ class EasyGrader(BaseGrader):
             return 0.0
         return delivered / total
 
-
-if __name__ == "__main__":
-    grader = EasyGrader()
-    # Demo with random actions
-    import random
-    random.seed(42)
-    actions = [random.randint(0, 5) for _ in range(100)]
-    score = grader.grade(actions)
-    print(f"Easy Task Score: {score:.4f}")
+    def score_with_explanation(self, episode_stats: dict) -> tuple[float, dict]:
+        """Return score with explanation breakdown."""
+        delivered = episode_stats["packages_delivered"]
+        total = episode_stats["packages_total"]
+        completion = delivered / total if total > 0 else 0.0
+        return completion, {
+            "completion": {"delivered": delivered, "total": total, "ratio": completion},
+            "final_score": completion,
+        }

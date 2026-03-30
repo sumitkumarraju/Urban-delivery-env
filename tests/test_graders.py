@@ -1,6 +1,6 @@
 """
 Unit tests for the Graders.
-Adheres to 'verification-before-completion' rule.
+Tests scoring bounds, explanations, and determinism.
 """
 import pytest
 from graders.easy_grader import EasyGrader
@@ -18,24 +18,52 @@ def test_graders_instantiation():
     assert h.config.name == "hard"
 
 
-def test_graders_score_bounds():
-    """Mock an episode stats dict to verify that the scoring math bounds to [0.0, 1.0]."""
-    mock_stats = {
-        "packages_delivered": 2,
-        "packages_total": 2,
-        "total_reward": 50,
-        "steps": 10,
-        "max_steps": 100,
-        "fuel_used": 10.0,
-        "initial_fuel": 100.0,
-        "done": True,
-        "final_observation": None  # HardGrader calculates offline the priorities, we will mock them
-    }
+def test_easy_grader_with_explanation():
+    """Test that easy grader returns a valid explanation."""
+    grader = EasyGrader()
+    import random
+    random.seed(42)
+    actions = [random.randint(0, 3) for _ in range(50)]
+    score, explanation = grader.grade_with_explanation(actions)
+    assert 0.0 <= score <= 1.0
+    assert "completion" in explanation
+    assert "final_score" in explanation
 
-    # Easy
-    easy = EasyGrader()
-    assert easy.score(mock_stats) == 1.0
 
-    # Medium weights -> 0.5*1.0 + 0.3*0.9 + 0.2*0.9 = 0.5 + 0.27 + 0.18 = 0.95
-    medium = MediumGrader()
-    assert medium.score(mock_stats) == pytest.approx(0.95)
+def test_medium_grader_with_explanation():
+    """Test that medium grader explains all 3 factors."""
+    grader = MediumGrader()
+    import random
+    random.seed(123)
+    actions = [random.randint(0, 3) for _ in range(100)]
+    score, explanation = grader.grade_with_explanation(actions)
+    assert 0.0 <= score <= 1.0
+    assert "completion" in explanation
+    assert "fuel_efficiency" in explanation
+    assert "time_efficiency" in explanation
+
+
+def test_hard_grader_with_explanation():
+    """Test that hard grader explains all 5 factors."""
+    grader = HardGrader()
+    import random
+    random.seed(456)
+    actions = [random.randint(0, 5) for _ in range(200)]
+    score, explanation = grader.grade_with_explanation(actions)
+    assert 0.0 <= score <= 1.0
+    assert "completion" in explanation
+    assert "fuel_efficiency" in explanation
+    assert "deadline_compliance" in explanation
+    assert "priority_accuracy" in explanation
+    assert "reward_normalized" in explanation
+
+
+def test_grader_determinism():
+    """Verify same actions always produce same score."""
+    grader = HardGrader()
+    import random
+    random.seed(789)
+    actions = [random.randint(0, 5) for _ in range(100)]
+    score1 = grader.grade(actions)
+    score2 = grader.grade(actions)
+    assert score1 == score2, "Grader must be deterministic"

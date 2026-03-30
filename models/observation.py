@@ -27,6 +27,7 @@ class PackageInfo(BaseModel):
     delivered: bool = False
     priority: int = Field(default=0, description="0=normal, 1=urgent, 2=fragile")
     deadline: Optional[int] = Field(default=None, description="Max steps to deliver, or None")
+    delivery_step: Optional[int] = Field(default=None, description="Step at which package was delivered")
 
 
 class VehicleState(BaseModel):

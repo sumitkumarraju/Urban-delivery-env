@@ -24,3 +24,7 @@ inference:
 # CLI interactive debugger tool
 debug:
 	python scripts/interactive_debugger.py
+
+# Start the OpenEnv server
+start:
+	uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload

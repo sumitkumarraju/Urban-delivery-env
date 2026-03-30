@@ -70,14 +70,20 @@ class BaseGrader(ABC):
         ...
 
     def grade(self, actions: list[int]) -> float:
-        """Run episode and return grade. Convenience method.
-
-        Args:
-            actions: List of action integers.
-
-        Returns:
-            Float score in [0.0, 1.0].
-        """
+        """Run episode and return grade. Convenience method."""
         stats = self.run_episode(actions)
         raw_score = self.score(stats)
         return max(0.0, min(1.0, raw_score))
+
+    def grade_with_explanation(self, actions: list[int]) -> tuple[float, dict]:
+        """Run episode and return grade with full scoring breakdown.
+
+        Returns:
+            Tuple of (score, explanation_dict).
+        """
+        stats = self.run_episode(actions)
+        if hasattr(self, 'score_with_explanation'):
+            score, explanation = self.score_with_explanation(stats)
+            return max(0.0, min(1.0, score)), explanation
+        raw_score = self.score(stats)
+        return max(0.0, min(1.0, raw_score)), {"final_score": raw_score}

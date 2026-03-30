@@ -41,6 +41,7 @@ class TaskConfig:
     num_fuel_stations: int = 2
     max_steps: int = 200
     seed: int = 42
+    max_carrying: int = 3
 
 
 @dataclass
@@ -55,6 +56,7 @@ class Package:
     delivered: bool = False
     priority: PackagePriority = PackagePriority.NORMAL
     deadline: Optional[int] = None
+    delivery_step: Optional[int] = None
 
 
 class DeliveryEnvironment:
@@ -293,11 +295,14 @@ class DeliveryEnvironment:
 
             self._fuel -= fuel_cost
 
-            # Auto-pickup: pick up packages at current position
+            # Auto-pickup: pick up packages at current position (respect capacity)
             for pkg in self._packages:
                 if (not pkg.picked_up and not pkg.delivered
                         and pkg.pickup_row == new_r and pkg.pickup_col == new_c
                         and pkg.package_id not in self._carrying):
+                    if len(self._carrying) >= self.config.max_carrying:
+                        self._message = f"Vehicle full ({self.config.max_carrying} max)! Deliver before picking up more."
+                        break
                     pkg.picked_up = True
                     self._carrying.append(pkg.package_id)
                     reward += 2.0
@@ -321,6 +326,7 @@ class DeliveryEnvironment:
             if (pkg.delivery_row == self._vehicle_row
                     and pkg.delivery_col == self._vehicle_col):
                 pkg.delivered = True
+                pkg.delivery_step = self._step_count  # Track exact delivery time
                 self._carrying.remove(pkg_id)
                 delivered_any = True
 
@@ -336,9 +342,9 @@ class DeliveryEnvironment:
                     reward += 10.0
                     breakdown[f"fragile_bonus_{pkg_id}"] = 10.0
 
-                # Deadline check
+                # Deadline check — uses per-package delivery_step, not total steps
                 if pkg.deadline is not None:
-                    if self._step_count <= pkg.deadline:
+                    if pkg.delivery_step <= pkg.deadline:
                         reward += 10.0
                         breakdown[f"deadline_met_{pkg_id}"] = 10.0
                     else:
@@ -415,6 +421,7 @@ class DeliveryEnvironment:
                 delivered=pkg.delivered,
                 priority=pkg.priority.value,
                 deadline=pkg.deadline,
+                delivery_step=pkg.delivery_step,
             ))
 
         return DeliveryObservation(
@@ -440,10 +447,34 @@ class DeliveryEnvironment:
     def get_state_summary(self) -> dict:
         """Return a compact state dict for LLM context."""
         obs = self._get_observation()
+        vr, vc = obs.vehicle.position
+
+        # Compute nearest undelivered package distance
+        nearest_pkg_dist = None
+        nearest_station_dist = None
+        for p in obs.packages:
+            if not p.picked_up and not p.delivered:
+                d = abs(p.pickup_position[0] - vr) + abs(p.pickup_position[1] - vc)
+                if nearest_pkg_dist is None or d < nearest_pkg_dist:
+                    nearest_pkg_dist = d
+            elif p.picked_up and not p.delivered:
+                d = abs(p.delivery_position[0] - vr) + abs(p.delivery_position[1] - vc)
+                if nearest_pkg_dist is None or d < nearest_pkg_dist:
+                    nearest_pkg_dist = d
+        for s in obs.fuel_stations:
+            d = abs(s[0] - vr) + abs(s[1] - vc)
+            if nearest_station_dist is None or d < nearest_station_dist:
+                nearest_station_dist = d
+
+        # Build natural language hint
+        hint = self._build_hint(obs, nearest_pkg_dist, nearest_station_dist)
+
         return {
             "position": obs.vehicle.position,
             "fuel": obs.vehicle.fuel,
             "carrying": obs.vehicle.carrying,
+            "carrying_count": len(obs.vehicle.carrying),
+            "max_carrying": self.config.max_carrying,
             "packages": [
                 {
                     "id": p.package_id,
@@ -471,4 +502,55 @@ class DeliveryEnvironment:
             "total": obs.packages_total,
             "reward": obs.total_reward,
             "done": obs.done,
+            "nearest_package_distance": nearest_pkg_dist,
+            "nearest_fuel_station_distance": nearest_station_dist,
+            "hint": hint,
         }
+
+    def _build_hint(self, obs, nearest_pkg_dist, nearest_station_dist) -> str:
+        """Generate a natural language hint for LLM agents."""
+        parts = []
+        vr, vc = obs.vehicle.position
+        fuel = obs.vehicle.fuel
+
+        # Fuel warning
+        if fuel <= 5:
+            parts.append(f"CRITICAL: Fuel at {fuel:.0f}! Refuel immediately or you will die.")
+        elif fuel <= 15:
+            parts.append(f"WARNING: Fuel low ({fuel:.0f}). Consider refueling soon.")
+
+        # Carrying status
+        carrying = obs.vehicle.carrying
+        if carrying:
+            # Find delivery targets for carried packages
+            targets = []
+            for p in obs.packages:
+                if p.package_id in carrying and not p.delivered:
+                    targets.append(f"pkg {p.package_id} → [{p.delivery_position[0]},{p.delivery_position[1]}]")
+            parts.append(f"Carrying {len(carrying)} package(s): {', '.join(targets)}. Navigate to delivery location and use DELIVER.")
+        else:
+            # Find nearest undelivered package
+            undelivered = [p for p in obs.packages if not p.picked_up and not p.delivered]
+            if undelivered:
+                urgent = [p for p in undelivered if p.priority == 1]
+                if urgent:
+                    p = urgent[0]
+                    parts.append(f"URGENT package {p.package_id} at [{p.pickup_position[0]},{p.pickup_position[1]}] — pick it up first!")
+                else:
+                    parts.append(f"{len(undelivered)} packages waiting for pickup. Navigate to a pickup location.")
+            else:
+                parts.append("All packages picked up or delivered!")
+
+        # Weather
+        weather_names = ["clear", "rainy (extra fuel cost)", "foggy (reduced visibility)"]
+        if obs.weather > 0:
+            parts.append(f"Weather: {weather_names[obs.weather]}.")
+
+        # Deadline warnings
+        for p in obs.packages:
+            if p.deadline and not p.delivered and p.picked_up:
+                remaining = p.deadline - obs.time_elapsed
+                if remaining <= 5:
+                    parts.append(f"DEADLINE ALERT: Package {p.package_id} must be delivered in {remaining} steps!")
+
+        return " ".join(parts) if parts else "All clear. Proceed with deliveries."
