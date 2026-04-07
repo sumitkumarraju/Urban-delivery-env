@@ -89,7 +89,7 @@ def get_llm_action(client: OpenAI, model: str, state_summary: dict) -> int:
     except Exception as e:
         print(f"  LLM error: {e}, using random action", file=sys.stderr)
         import random
-        return random.randint(0, 3)
+        return random.randint(0, 5)
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +101,6 @@ def run_task(
     client: OpenAI | None,
     model: str,
     use_llm: bool,
-    max_llm_steps: int = 50,
 ) -> list[int]:
     """Run a single task and emit [STEP] structured output for every step.
 
@@ -117,7 +116,7 @@ def run_task(
 
     if use_llm and client is not None:
         # ---- LLM-driven loop ----
-        while not obs.done and step < max_llm_steps:
+        while not obs.done and step < config.max_steps:
             state = env.get_state_summary()
             action_int = get_llm_action(client, model, state)
             actions.append(action_int)
@@ -126,38 +125,22 @@ def run_task(
             obs, reward_info = env.step(action)
             step += 1
 
-            # Emit structured [STEP] line
-            log(
-                f"[STEP] task={task_name} step={step} "
-                f"action={action_int} "
-                f"reward={reward_info.step_reward:.4f} "
-                f"cumulative_reward={reward_info.cumulative_reward:.4f} "
-                f"delivered={obs.packages_delivered}/{obs.packages_total} "
-                f"fuel={obs.vehicle.fuel:.1f} "
-                f"done={obs.done}"
-            )
+            # Emit structured [STEP] line exactly as requested
+            log(f"[STEP] task={task_name} step={step} action={action_int} reward={reward_info.step_reward:.4f} cumulative_reward={reward_info.cumulative_reward:.4f} done={obs.done}")
     else:
         # ---- Random fallback loop ----
         import random
         random.seed(config.seed + 999)
         while not obs.done and step < config.max_steps:
-            a = random.randint(0, 3)
+            a = random.randint(0, 5)
             actions.append(a)
 
             action = DeliveryAction(action=a)
             obs, reward_info = env.step(action)
             step += 1
 
-            # Emit structured [STEP] line
-            log(
-                f"[STEP] task={task_name} step={step} "
-                f"action={a} "
-                f"reward={reward_info.step_reward:.4f} "
-                f"cumulative_reward={reward_info.cumulative_reward:.4f} "
-                f"delivered={obs.packages_delivered}/{obs.packages_total} "
-                f"fuel={obs.vehicle.fuel:.1f} "
-                f"done={obs.done}"
-            )
+            # Emit structured [STEP] line exactly as requested
+            log(f"[STEP] task={task_name} step={step} action={a} reward={reward_info.step_reward:.4f} cumulative_reward={reward_info.cumulative_reward:.4f} done={obs.done}")
 
     return actions
 
@@ -196,13 +179,7 @@ def main():
 
         # ---- [START] block ----
         config = ALL_TASKS[task_name]
-        log(
-            f"[START] task={task_name} "
-            f"grid={config.grid_size}x{config.grid_size} "
-            f"packages={config.num_packages} "
-            f"fuel={config.initial_fuel} "
-            f"max_steps={config.max_steps}"
-        )
+        log(f"[START] task={task_name}")
 
         # Run the episode (emits [STEP] lines inside)
         actions = run_task(task_name, client, model, use_llm)
@@ -219,12 +196,7 @@ def main():
         }
 
         # ---- [END] block ----
-        log(
-            f"[END] task={task_name} "
-            f"score={score:.4f} "
-            f"steps={len(actions)} "
-            f"time={elapsed:.2f}s"
-        )
+        log(f"[END] task={task_name} score={score:.4f} steps={len(actions)}")
 
     # ---- Summary ----
     total_elapsed = time.time() - total_start
