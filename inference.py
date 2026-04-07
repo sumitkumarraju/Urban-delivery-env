@@ -3,6 +3,8 @@
 Baseline Inference Script for Urban Delivery Optimization Environment.
 
 Uses OpenAI-compatible API to run an LLM agent on all 3 tasks.
+Emits structured [START]/[STEP]/[END] output blocks to stdout for the
+OpenEnv validator pipeline.
 
 Required environment variables:
     API_BASE_URL  — Base URL for the API (e.g., https://api.openai.com/v1)
@@ -31,6 +33,15 @@ from tasks import ALL_TASKS
 from graders.easy_grader import EasyGrader
 from graders.medium_grader import MediumGrader
 from graders.hard_grader import HardGrader
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def log(msg: str) -> None:
+    """Print to stdout with flush for validator visibility."""
+    print(msg, flush=True)
 
 
 SYSTEM_PROMPT = """You are an expert delivery driver AI navigating a city grid.
@@ -76,19 +87,23 @@ def get_llm_action(client: OpenAI, model: str, state_summary: dict) -> int:
         action = int(answer[0]) if answer and answer[0].isdigit() else 0
         return max(0, min(5, action))
     except Exception as e:
-        print(f"  LLM error: {e}, using random action")
+        print(f"  LLM error: {e}, using random action", file=sys.stderr)
         import random
         return random.randint(0, 3)
 
 
-def run_task(task_name: str, client: OpenAI, model: str, max_llm_steps: int = 50) -> list[int]:
-    """Run a single task using the LLM agent.
+# ---------------------------------------------------------------------------
+# Task runner — emits [STEP] lines
+# ---------------------------------------------------------------------------
 
-    Args:
-        task_name: Task difficulty level.
-        client: OpenAI client.
-        model: Model name.
-        max_llm_steps: Max steps to query the LLM.
+def run_task(
+    task_name: str,
+    client: OpenAI | None,
+    model: str,
+    use_llm: bool,
+    max_llm_steps: int = 50,
+) -> list[int]:
+    """Run a single task and emit [STEP] structured output for every step.
 
     Returns:
         List of action integers taken.
@@ -98,33 +113,58 @@ def run_task(task_name: str, client: OpenAI, model: str, max_llm_steps: int = 50
     obs = env.reset()
     actions: list[int] = []
 
-    print(f"\n{'='*50}")
-    print(f"  Task: {task_name.upper()}")
-    print(f"  Grid: {config.grid_size}x{config.grid_size}")
-    print(f"  Packages: {config.num_packages}")
-    print(f"  Fuel: {config.initial_fuel}")
-    print(f"  Features: traffic={config.has_traffic}, deadlines={config.has_deadlines}, "
-          f"priorities={config.has_priorities}, weather={config.has_weather}")
-    print(f"{'='*50}")
-
     step = 0
-    while not obs.done and step < max_llm_steps:
-        state = env.get_state_summary()
-        action_int = get_llm_action(client, model, state)
-        actions.append(action_int)
 
-        action = DeliveryAction(action=action_int)
-        obs, reward = env.step(action)
+    if use_llm and client is not None:
+        # ---- LLM-driven loop ----
+        while not obs.done and step < max_llm_steps:
+            state = env.get_state_summary()
+            action_int = get_llm_action(client, model, state)
+            actions.append(action_int)
 
-        if step % 10 == 0 or obs.done:
-            print(f"  Step {step:3d} | Action: {ACTION_NAMES.get(action_int, '?'):15s} | "
-                  f"Delivered: {obs.packages_delivered}/{obs.packages_total} | "
-                  f"Fuel: {obs.vehicle.fuel:5.1f} | Reward: {obs.total_reward:+7.1f}")
+            action = DeliveryAction(action=action_int)
+            obs, reward_info = env.step(action)
+            step += 1
 
-        step += 1
+            # Emit structured [STEP] line
+            log(
+                f"[STEP] task={task_name} step={step} "
+                f"action={action_int} "
+                f"reward={reward_info.step_reward:.4f} "
+                f"cumulative_reward={reward_info.cumulative_reward:.4f} "
+                f"delivered={obs.packages_delivered}/{obs.packages_total} "
+                f"fuel={obs.vehicle.fuel:.1f} "
+                f"done={obs.done}"
+            )
+    else:
+        # ---- Random fallback loop ----
+        import random
+        random.seed(config.seed + 999)
+        while not obs.done and step < config.max_steps:
+            a = random.randint(0, 3)
+            actions.append(a)
+
+            action = DeliveryAction(action=a)
+            obs, reward_info = env.step(action)
+            step += 1
+
+            # Emit structured [STEP] line
+            log(
+                f"[STEP] task={task_name} step={step} "
+                f"action={a} "
+                f"reward={reward_info.step_reward:.4f} "
+                f"cumulative_reward={reward_info.cumulative_reward:.4f} "
+                f"delivered={obs.packages_delivered}/{obs.packages_total} "
+                f"fuel={obs.vehicle.fuel:.1f} "
+                f"done={obs.done}"
+            )
 
     return actions
 
+
+# ---------------------------------------------------------------------------
+# Main — emits [START] and [END] blocks
+# ---------------------------------------------------------------------------
 
 def main():
     api_base = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
@@ -132,7 +172,7 @@ def main():
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
     if not api_key:
-        print("WARNING: OPENAI_API_KEY not set. Running with random actions as fallback.")
+        log("WARNING: OPENAI_API_KEY not set. Running with random actions as fallback.")
         use_llm = False
     else:
         use_llm = True
@@ -148,64 +188,62 @@ def main():
         "hard": HardGrader(),
     }
 
-    print("\n" + "=" * 60)
-    print("  URBAN DELIVERY OPTIMIZATION — BASELINE INFERENCE")
-    print("=" * 60)
-    print(f"  Model: {model}")
-    print(f"  API Base: {api_base}")
-    print(f"  LLM Enabled: {use_llm}")
-
     total_start = time.time()
     results = {}
 
     for task_name in ["easy", "medium", "hard"]:
         task_start = time.time()
 
-        if use_llm:
-            actions = run_task(task_name, client, model)
-        else:
-            import random
-            random.seed(ALL_TASKS[task_name].seed + 999)
-            config = ALL_TASKS[task_name]
-            env = DeliveryEnvironment(config)
-            obs = env.reset()
-            actions = []
-            for _ in range(config.max_steps):
-                if obs.done:
-                    break
-                a = random.randint(0, 3)
-                actions.append(a)
-                action = DeliveryAction(action=a)
-                obs, _ = env.step(action)
+        # ---- [START] block ----
+        config = ALL_TASKS[task_name]
+        log(
+            f"[START] task={task_name} "
+            f"grid={config.grid_size}x{config.grid_size} "
+            f"packages={config.num_packages} "
+            f"fuel={config.initial_fuel} "
+            f"max_steps={config.max_steps}"
+        )
 
-        score = graders[task_name].grade(actions)
+        # Run the episode (emits [STEP] lines inside)
+        actions = run_task(task_name, client, model, use_llm)
+
+        # Grade
+        score, explanation = graders[task_name].grade_with_explanation(actions)
         elapsed = time.time() - task_start
 
         results[task_name] = {
             "score": score,
             "steps": len(actions),
             "time_seconds": round(elapsed, 2),
+            "explanation": explanation,
         }
 
-        print(f"\n  ✅ {task_name.upper()} — Score: {score:.4f} | "
-              f"Steps: {len(actions)} | Time: {elapsed:.1f}s")
+        # ---- [END] block ----
+        log(
+            f"[END] task={task_name} "
+            f"score={score:.4f} "
+            f"steps={len(actions)} "
+            f"time={elapsed:.2f}s"
+        )
 
+    # ---- Summary ----
     total_elapsed = time.time() - total_start
-
-    print("\n" + "=" * 60)
-    print("  FINAL RESULTS")
-    print("=" * 60)
-    for task, res in results.items():
-        print(f"  {task:8s} → Score: {res['score']:.4f}")
     avg_score = sum(r["score"] for r in results.values()) / len(results)
-    print(f"  {'AVERAGE':8s} → Score: {avg_score:.4f}")
-    print(f"\n  Total Time: {total_elapsed:.1f}s")
-    print("=" * 60)
+
+    log("")
+    log("=" * 60)
+    log("  FINAL RESULTS")
+    log("=" * 60)
+    for task, res in results.items():
+        log(f"  {task:8s} -> Score: {res['score']:.4f} | Steps: {res['steps']} | Time: {res['time_seconds']}s")
+    log(f"  {'AVERAGE':8s} -> Score: {avg_score:.4f}")
+    log(f"  Total Time: {total_elapsed:.1f}s")
+    log("=" * 60)
 
     if total_elapsed > 1200:
-        print("  ⚠️  WARNING: Exceeded 20-minute limit!")
+        log("  WARNING: Exceeded 20-minute limit!")
     else:
-        print(f"  ✅ Within time limit ({1200 - total_elapsed:.0f}s remaining)")
+        log(f"  Within time limit ({1200 - total_elapsed:.0f}s remaining)")
 
 
 if __name__ == "__main__":
