@@ -152,7 +152,8 @@ def run_task(
 def main():
     api_base = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
     model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-    api_key = os.environ.get("OPENAI_API_KEY", "")
+    # Validator instructions specify HF_TOKEN is provided as the API key
+    api_key = os.environ.get("HF_TOKEN", os.environ.get("OPENAI_API_KEY", ""))
 
     if not api_key:
         log("WARNING: OPENAI_API_KEY not set. Running with random actions as fallback.")
