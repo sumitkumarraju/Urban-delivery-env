@@ -150,10 +150,12 @@ def run_task(
 # ---------------------------------------------------------------------------
 
 def main():
-    api_base = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-    model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+    API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+    MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+    HF_TOKEN = os.getenv("HF_TOKEN")
+
     # Validator instructions specify HF_TOKEN is provided as the API key
-    api_key = os.environ.get("HF_TOKEN", os.environ.get("OPENAI_API_KEY", ""))
+    api_key = HF_TOKEN or os.getenv("OPENAI_API_KEY", "")
 
     if not api_key:
         log("WARNING: OPENAI_API_KEY not set. Running with random actions as fallback.")
@@ -162,7 +164,7 @@ def main():
         use_llm = True
 
     if use_llm:
-        client = OpenAI(base_url=api_base, api_key=api_key)
+        client = OpenAI(base_url=API_BASE_URL, api_key=api_key)
     else:
         client = None
 
@@ -183,7 +185,7 @@ def main():
         log(f"[START] task={task_name}")
 
         # Run the episode (emits [STEP] lines inside)
-        actions = run_task(task_name, client, model, use_llm)
+        actions = run_task(task_name, client, MODEL_NAME, use_llm)
 
         # Grade
         score, explanation = graders[task_name].grade_with_explanation(actions)
