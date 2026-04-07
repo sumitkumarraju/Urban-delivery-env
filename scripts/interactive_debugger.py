@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-Systematic Debugging: Interactive CLI visualizer.
-Provides a human-in-the-loop debugging mechanism to trace the step-by-step
-logic of state transitions, reward shapes, and edge-cases (wall collisions, etc.).
-"""
+"""Interactive CLI for stepping through episodes and inspecting state."""
 import os
 import sys
 

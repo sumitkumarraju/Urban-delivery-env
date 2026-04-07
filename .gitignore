@@ -8,3 +8,10 @@ __pycache__/
 .DS_Store
 .hf_cache/
 .uv_cache/
+
+# MCP config may contain API keys — do not commit
+.cursor/mcp.json
+.cursor/mcp.secrets.json
+out.log
+out2.log
+.cursor/

@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Performance Profiling: Benchmark steps per second (SPS).
-For OpenEnv hackathon, ensuring high throughput is crucial for RL training.
-"""
+"""Measure raw environment throughput (steps per second) on the hard task."""
 import time
 import random
 import sys
@@ -48,9 +45,9 @@ def run_benchmark():
     print("-" * 50)
     
     if sps > 10000:
-        print("✅ PERFORMANCE PASSED: > 10,000 SPS achieved. Industrial grade.")
+        print("PASS: > 10,000 SPS achieved.")
     else:
-        print("❌ PERFORMANCE FAILED: Bottleneck found. Requires immediate profiling.")
+        print("FAIL: Below 10,000 SPS threshold.")
         sys.exit(1)
 
 if __name__ == "__main__":

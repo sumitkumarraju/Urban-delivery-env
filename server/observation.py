@@ -1,9 +1,4 @@
-"""
-OpenEnv-compatible Observation subclass for the Urban Delivery Environment.
-
-Fields added here (beyond done/reward/metadata) are serialized into the
-`observation` dict by OpenEnv's serialize_observation.
-"""
+"""Extended observation carrying delivery-specific fields beyond done/reward."""
 
 from typing import Any, Dict, List, Optional
 from pydantic import Field
@@ -11,7 +6,7 @@ from openenv.core.env_server.types import Observation
 
 
 class DeliveryObservationResponse(Observation):
-    """Observation returned by the Urban Delivery Environment's reset/step."""
+    """Rich observation returned by reset() and step() on the server side."""
 
     model_config = {"extra": "allow"}
 

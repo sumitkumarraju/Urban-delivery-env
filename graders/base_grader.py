@@ -2,7 +2,7 @@
 
 All graders must:
 - Be deterministic (same inputs → same score)
-- Return a float strictly between 0 and 1 (OpenEnv validators reject 0.0 and 1.0)
+- Return a float strictly between 0 and 1 (platform validators reject 0.0 and 1.0)
 - Be reproducible across runs
 """
 

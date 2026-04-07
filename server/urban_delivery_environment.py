@@ -1,9 +1,4 @@
-"""
-Urban Delivery Environment — OpenEnv MCP Server Integration.
-
-Wraps the core DeliveryEnvironment to expose it through OpenEnv's
-MCPEnvironment interface with FastMCP tools for agent interaction.
-"""
+"""MCPEnvironment wrapper — exposes the delivery simulation as MCP tools."""
 
 from typing import Any, Optional
 from uuid import uuid4
@@ -24,15 +19,7 @@ from tasks import ALL_TASKS
 
 
 class UrbanDeliveryEnvironment(MCPEnvironment):
-    """OpenEnv MCPEnvironment that wraps the Urban Delivery simulation.
-
-    Exposes the environment through MCP tools:
-    - move(direction): Move the vehicle (up/down/left/right)
-    - deliver(): Attempt to deliver a carried package
-    - refuel(): Refuel at a fuel station
-    - get_observation(): Get current environment state
-    - set_task(difficulty): Switch task difficulty
-    """
+    """Wraps DeliveryEnvironment and registers MCP tools for agent interaction."""
 
     def __init__(self, task_name: str = "easy"):
         mcp = FastMCP("urban_delivery_env")

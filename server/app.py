@@ -1,12 +1,4 @@
-"""
-FastAPI application for the Urban Delivery Environment.
-
-Usage:
-    uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
-
-    Or run directly:
-    python -m server.app
-"""
+"""FastAPI entry point — wires the delivery environment to the HTTP server."""
 
 import sys
 import os
@@ -27,7 +19,6 @@ app = create_app(
 
 
 def main():
-    """Entry point for direct execution."""
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 

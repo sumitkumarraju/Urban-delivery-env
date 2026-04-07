@@ -1,15 +1,4 @@
-"""
-Urban Delivery Optimization Environment — Core Simulation Engine.
-
-A grid-based RL environment where an agent simulates a delivery driver who must:
-- Navigate a city grid to pick up and deliver packages
-- Manage limited fuel with strategic refueling
-- Avoid traffic congestion zones
-- Meet delivery deadlines and handle package priorities
-- Adapt to weather conditions
-
-This module contains the pure environment logic, independent of any framework.
-"""
+"""Core simulation: grid navigation, fuel, traffic, weather, package delivery."""
 
 import random
 from dataclasses import dataclass, field

@@ -1,21 +1,10 @@
 #!/usr/bin/env python3
-"""
-Baseline Inference Script for Urban Delivery Optimization Environment.
+"""Run an LLM agent through all three delivery tasks and report scores.
 
-Uses OpenAI-compatible API to run an LLM agent on all 3 tasks.
-Emits structured [START]/[STEP]/[END] output blocks to stdout for the
-OpenEnv validator pipeline.
-
-Required environment variables:
-    API_BASE_URL  — Base URL for the API (e.g., https://api.openai.com/v1)
-    MODEL_NAME    — Model to use (e.g., gpt-4o-mini)
-    OPENAI_API_KEY — API key
-
-Usage:
-    export API_BASE_URL=https://api.openai.com/v1
-    export MODEL_NAME=gpt-4o-mini
-    export OPENAI_API_KEY=sk-...
-    python inference.py
+Env vars:
+    API_BASE_URL   — chat-completions endpoint (default: OpenAI)
+    MODEL_NAME     — model id
+    HF_TOKEN / OPENAI_API_KEY — bearer token
 """
 
 import json
@@ -35,12 +24,7 @@ from graders.medium_grader import MediumGrader
 from graders.hard_grader import HardGrader
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def log(msg: str) -> None:
-    """Print to stdout with flush for validator visibility."""
     print(msg, flush=True)
 
 
@@ -91,21 +75,13 @@ def get_llm_action(client: OpenAI, model: str, state_summary: dict) -> int:
         return 0
 
 
-# ---------------------------------------------------------------------------
-# Task runner — emits [STEP] lines
-# ---------------------------------------------------------------------------
-
 def run_task(
     task_name: str,
     client: OpenAI | None,
     model: str,
     use_llm: bool,
 ) -> list[int]:
-    """Run a single task and emit [STEP] structured output for every step.
-
-    Returns:
-        List of action integers taken.
-    """
+    """Execute one task, printing a [STEP] line per action. Returns the action list."""
     config = ALL_TASKS[task_name]
     env = DeliveryEnvironment(config)
     obs = env.reset()
@@ -114,7 +90,6 @@ def run_task(
     step = 0
 
     if use_llm and client is not None:
-        # ---- LLM-driven loop ----
         while not obs.done and step < config.max_steps:
             state = env.get_state_summary()
             action_int = get_llm_action(client, model, state)
@@ -123,11 +98,8 @@ def run_task(
             action = DeliveryAction(action=action_int)
             obs, reward_info = env.step(action)
             step += 1
-
-            # Emit structured [STEP] line exactly as requested
             log(f"[STEP] task={task_name} step={step} action={action_int} reward={reward_info.step_reward:.4f} cumulative_reward={reward_info.cumulative_reward:.4f} done={obs.done}")
     else:
-        # ---- Random fallback loop ----
         import random
         random.seed(config.seed + 999)
         while not obs.done and step < config.max_steps:
@@ -137,23 +109,16 @@ def run_task(
             action = DeliveryAction(action=a)
             obs, reward_info = env.step(action)
             step += 1
-
-            # Emit structured [STEP] line exactly as requested
             log(f"[STEP] task={task_name} step={step} action={a} reward={reward_info.step_reward:.4f} cumulative_reward={reward_info.cumulative_reward:.4f} done={obs.done}")
 
     return actions
 
-
-# ---------------------------------------------------------------------------
-# Main — emits [START] and [END] blocks
-# ---------------------------------------------------------------------------
 
 def main():
     API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
     MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
     HF_TOKEN = os.getenv("HF_TOKEN")
 
-    # Validator instructions specify HF_TOKEN is provided as the API key
     api_key = HF_TOKEN or os.getenv("OPENAI_API_KEY", "")
 
     if not api_key:
@@ -179,14 +144,10 @@ def main():
     for task_name in ["easy", "medium", "hard"]:
         task_start = time.time()
 
-        # ---- [START] block ----
         config = ALL_TASKS[task_name]
         log(f"[START] task={task_name}")
 
-        # Run the episode (emits [STEP] lines inside)
         actions = run_task(task_name, client, MODEL_NAME, use_llm)
-
-        # Grade
         score, explanation = graders[task_name].grade_with_explanation(actions)
         elapsed = time.time() - task_start
 
@@ -197,10 +158,8 @@ def main():
             "explanation": explanation,
         }
 
-        # ---- [END] block ----
         log(f"[END] task={task_name} score={score:.6f} steps={len(actions)}")
 
-    # ---- Summary ----
     total_elapsed = time.time() - total_start
     avg_score = sum(r["score"] for r in results.values()) / len(results)
 
