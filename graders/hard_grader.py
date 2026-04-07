@@ -24,10 +24,10 @@ class HardGrader(BaseGrader):
         # Completion ratio (40%)
         completion = delivered / total if total > 0 else 0.0
 
-        # Fuel efficiency (20%)
+        # Fuel efficiency (20%) — clamped to [0, 1] since refueling can make fuel_used negative
         fuel_used = episode_stats["fuel_used"]
         initial_fuel = episode_stats["initial_fuel"]
-        fuel_efficiency = max(0.0, 1.0 - (fuel_used / initial_fuel)) if initial_fuel > 0 else 0.0
+        fuel_efficiency = max(0.0, min(1.0, 1.0 - (fuel_used / initial_fuel))) if initial_fuel > 0 else 0.0
 
         # Deadline compliance (20%) — uses per-package delivery_step
         deadline_met = 0
@@ -35,12 +35,11 @@ class HardGrader(BaseGrader):
         for pkg in obs.packages:
             if pkg.delivered and pkg.deadline is not None:
                 deadline_total += 1
-                # delivery_step is tracked per-package in env.py
                 if pkg.delivery_step is not None and pkg.delivery_step <= pkg.deadline:
                     deadline_met += 1
         deadline_compliance = (deadline_met / deadline_total) if deadline_total > 0 else 1.0
 
-        # Priority accuracy (10%) — did we deliver urgent/fragile packages?
+        # Priority accuracy (10%)
         priority_delivered = 0
         priority_total = 0
         for pkg in obs.packages:
@@ -50,7 +49,7 @@ class HardGrader(BaseGrader):
                     priority_delivered += 1
         priority_accuracy = (priority_delivered / priority_total) if priority_total > 0 else 1.0
 
-        # Reward normalized (10%) — positive reward ratio
+        # Reward normalized (10%)
         total_reward = episode_stats["total_reward"]
         max_possible = total * 20 + total * 15 + total * 10 + 50
         reward_normalized = max(0.0, min(1.0, total_reward / max_possible)) if max_possible > 0 else 0.0
@@ -73,7 +72,7 @@ class HardGrader(BaseGrader):
         completion = delivered / total if total > 0 else 0.0
         fuel_used = episode_stats["fuel_used"]
         initial_fuel = episode_stats["initial_fuel"]
-        fuel_efficiency = max(0.0, 1.0 - (fuel_used / initial_fuel)) if initial_fuel > 0 else 0.0
+        fuel_efficiency = max(0.0, min(1.0, 1.0 - (fuel_used / initial_fuel))) if initial_fuel > 0 else 0.0
 
         deadline_met = 0
         deadline_total = 0

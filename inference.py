@@ -87,9 +87,8 @@ def get_llm_action(client: OpenAI, model: str, state_summary: dict) -> int:
         action = int(answer[0]) if answer and answer[0].isdigit() else 0
         return max(0, min(5, action))
     except Exception as e:
-        print(f"  LLM error: {e}, using random action", file=sys.stderr)
-        import random
-        return random.randint(0, 5)
+        print(f"  LLM error: {e}, using action 0 as fallback", file=sys.stderr)
+        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +198,7 @@ def main():
         }
 
         # ---- [END] block ----
-        log(f"[END] task={task_name} score={score:.4f} steps={len(actions)}")
+        log(f"[END] task={task_name} score={score:.6f} steps={len(actions)}")
 
     # ---- Summary ----
     total_elapsed = time.time() - total_start
@@ -210,8 +209,8 @@ def main():
     log("  FINAL RESULTS")
     log("=" * 60)
     for task, res in results.items():
-        log(f"  {task:8s} -> Score: {res['score']:.4f} | Steps: {res['steps']} | Time: {res['time_seconds']}s")
-    log(f"  {'AVERAGE':8s} -> Score: {avg_score:.4f}")
+        log(f"  {task:8s} -> Score: {res['score']:.6f} | Steps: {res['steps']} | Time: {res['time_seconds']}s")
+    log(f"  {'AVERAGE':8s} -> Score: {avg_score:.6f}")
     log(f"  Total Time: {total_elapsed:.1f}s")
     log("=" * 60)
 

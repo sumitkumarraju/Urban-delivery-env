@@ -2,7 +2,7 @@
 
 All graders must:
 - Be deterministic (same inputs → same score)
-- Return a float between 0.0 and 1.0
+- Return a float strictly between 0 and 1 (OpenEnv validators reject 0.0 and 1.0)
 - Be reproducible across runs
 """
 
@@ -11,6 +11,19 @@ from abc import ABC, abstractmethod
 from env import DeliveryEnvironment, TaskConfig
 from models.action import DeliveryAction
 from models.observation import DeliveryObservation
+
+# Linear map [0, 1] -> (eps, 1-eps) so platform checks 0 < score < 1 pass.
+# Epsilon must be large enough that :.4f formatting never rounds to "0.0000"/"1.0000".
+_GRADE_EPS = 0.001
+
+
+def _clamp_unit(x: float) -> float:
+    return max(0.0, min(1.0, x))
+
+
+def _to_open_unit_interval(clamped: float) -> float:
+    """Map a [0, 1] value into a strict subset of (0, 1)."""
+    return _GRADE_EPS + (1.0 - 2.0 * _GRADE_EPS) * clamped
 
 
 class BaseGrader(ABC):
@@ -59,13 +72,13 @@ class BaseGrader(ABC):
 
     @abstractmethod
     def score(self, episode_stats: dict) -> float:
-        """Calculate a score between 0.0 and 1.0.
+        """Calculate a raw score on the conceptual [0.0, 1.0] scale.
 
         Args:
             episode_stats: Dict from run_episode().
 
         Returns:
-            Float score in [0.0, 1.0].
+            Float score in [0.0, 1.0] before open-interval normalization in grade().
         """
         ...
 
@@ -73,17 +86,20 @@ class BaseGrader(ABC):
         """Run episode and return grade. Convenience method."""
         stats = self.run_episode(actions)
         raw_score = self.score(stats)
-        return max(0.0, min(1.0, raw_score))
+        return _to_open_unit_interval(_clamp_unit(raw_score))
 
     def grade_with_explanation(self, actions: list[int]) -> tuple[float, dict]:
         """Run episode and return grade with full scoring breakdown.
 
         Returns:
-            Tuple of (score, explanation_dict).
+            Tuple of (score, explanation_dict). Score is strictly in (0, 1).
         """
         stats = self.run_episode(actions)
         if hasattr(self, 'score_with_explanation'):
             score, explanation = self.score_with_explanation(stats)
-            return max(0.0, min(1.0, score)), explanation
+            mapped = _to_open_unit_interval(_clamp_unit(score))
+            explanation["final_score"] = mapped
+            return mapped, explanation
         raw_score = self.score(stats)
-        return max(0.0, min(1.0, raw_score)), {"final_score": raw_score}
+        mapped = _to_open_unit_interval(_clamp_unit(raw_score))
+        return mapped, {"final_score": mapped}

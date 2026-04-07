@@ -22,10 +22,10 @@ class MediumGrader(BaseGrader):
         completion = delivered / total if total > 0 else 0.0
         fuel_used = episode_stats["fuel_used"]
         initial_fuel = episode_stats["initial_fuel"]
-        fuel_efficiency = max(0.0, 1.0 - (fuel_used / initial_fuel)) if initial_fuel > 0 else 0.0
+        fuel_efficiency = max(0.0, min(1.0, 1.0 - (fuel_used / initial_fuel))) if initial_fuel > 0 else 0.0
         steps = episode_stats["steps"]
         max_steps = episode_stats["max_steps"]
-        time_efficiency = max(0.0, 1.0 - (steps / max_steps)) if max_steps > 0 else 0.0
+        time_efficiency = max(0.0, min(1.0, 1.0 - (steps / max_steps))) if max_steps > 0 else 0.0
 
         return 0.5 * completion + 0.3 * fuel_efficiency + 0.2 * time_efficiency
 
@@ -37,10 +37,10 @@ class MediumGrader(BaseGrader):
         completion = delivered / total if total > 0 else 0.0
         fuel_used = episode_stats["fuel_used"]
         initial_fuel = episode_stats["initial_fuel"]
-        fuel_efficiency = max(0.0, 1.0 - (fuel_used / initial_fuel)) if initial_fuel > 0 else 0.0
+        fuel_efficiency = max(0.0, min(1.0, 1.0 - (fuel_used / initial_fuel))) if initial_fuel > 0 else 0.0
         steps = episode_stats["steps"]
         max_steps = episode_stats["max_steps"]
-        time_efficiency = max(0.0, 1.0 - (steps / max_steps)) if max_steps > 0 else 0.0
+        time_efficiency = max(0.0, min(1.0, 1.0 - (steps / max_steps))) if max_steps > 0 else 0.0
 
         final_score = 0.5 * completion + 0.3 * fuel_efficiency + 0.2 * time_efficiency
 
