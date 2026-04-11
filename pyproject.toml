@@ -34,6 +34,7 @@ packages = [
     "urban_delivery_env.tasks",
     "urban_delivery_env.graders",
     "urban_delivery_env.server",
+    "urban_delivery_env.scripts",
 ]
 [tool.setuptools.package-dir]
 "urban_delivery_env" = "."
@@ -41,7 +42,11 @@ packages = [
 "urban_delivery_env.tasks" = "tasks"
 "urban_delivery_env.graders" = "graders"
 "urban_delivery_env.server" = "server"
+"urban_delivery_env.scripts" = "scripts"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

@@ -179,10 +179,11 @@ python inference.py
 | Tool | Args | Description |
 |------|------|-------------|
 | `move` | `direction: str` | up / down / left / right |
-| `deliver` | — | Deliver at current cell |
-| `refuel` | — | Refuel at current cell |
+| `pickup` | — | Check carrying status and nearby packages |
+| `deliver` | — | Deliver carried package at delivery location |
+| `refuel` | — | Refuel at fuel station |
 | `get_observation` | — | Full state + NL hint |
-| `get_hint` | — | NL advice only |
+| `get_hint` | — | Strategic NL advice with distances |
 | `set_task` | `difficulty: str` | easy / medium / hard |
 
 ---

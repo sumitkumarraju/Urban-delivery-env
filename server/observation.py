@@ -1,14 +1,19 @@
 """Extended observation carrying delivery-specific fields beyond done/reward."""
 
 from typing import Any, Dict, List, Optional
-from pydantic import Field
+from pydantic import ConfigDict, Field
 from openenv.core.env_server.types import Observation
 
 
 class DeliveryObservationResponse(Observation):
-    """Rich observation returned by reset() and step() on the server side."""
+    """Rich observation returned by reset() and step() on the server side.
 
-    model_config = {"extra": "allow"}
+    Inherits done/reward/metadata from Observation base class. Adds
+    delivery-specific fields for vehicle state, package tracking, and
+    natural language hints.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     status: str = Field(default="ready", description="Environment status")
     task: str = Field(default="easy", description="Current task difficulty")

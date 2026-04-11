@@ -15,12 +15,15 @@ app = create_app(
     CallToolAction,
     DeliveryObservationResponse,
     env_name="urban_delivery_env",
+    max_concurrent_envs=4,
 )
 
 
 def main():
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":

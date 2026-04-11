@@ -193,7 +193,16 @@ class DeliveryEnvironment:
         reward_breakdown: dict[str, float] = {}
         step_reward = 0.0
 
-        act = ActionType(action.action)
+        try:
+            act = ActionType(action.action)
+        except (ValueError, KeyError):
+            self._message = f"Invalid action {action.action}. Valid: 0-5."
+            return self._get_observation(), RewardInfo(
+                total_reward=self._total_reward,
+                step_reward=-1.0,
+                breakdown={"invalid_action": -1.0},
+                cumulative_reward=self._total_reward,
+            )
 
         # Dynamic traffic update
         if self.config.dynamic_traffic and self._step_count % 5 == 0:

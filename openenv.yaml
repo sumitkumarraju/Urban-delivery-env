@@ -26,8 +26,9 @@ tasks:
 
 tools:
   - move: "Move vehicle (up/down/left/right)"
+  - pickup: "Check pickup status and carrying info"
   - deliver: "Deliver package at current position"
   - refuel: "Refuel at fuel station"
-  - get_observation: "Get current state"
-  - get_hint: "Get natural language advice"
+  - get_observation: "Get full environment state"
+  - get_hint: "Get natural language strategic advice"
   - set_task: "Switch difficulty (easy/medium/hard)"
